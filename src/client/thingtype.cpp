@@ -472,20 +472,81 @@ void ThingType::replaceSprites(std::map<uint32_t, ImagePtr>& replacements, std::
     }
 }
 
+
 void ThingType::unserializeOtml(const OTMLNodePtr& node)
 {
     for(const OTMLNodePtr& node2 : node->children()) {
-        if(node2->tag() == "opacity")
+        if(node2->tag() == "opacity") {
             m_opacity = node2->value<float>();
-        else if(node2->tag() == "notprewalkable")
+        } else if(node2->tag() == "outfit-displacement") {
+            if (const OTMLNodePtr& northNode = node2->get("North")) {
+                m_outfit_displacement_north = northNode->value<Point>();
+            }
+            if (const OTMLNodePtr& eastNode = node2->get("East")) {
+                m_outfit_displacement_east = eastNode->value<Point>();
+            }
+            if (const OTMLNodePtr& southNode = node2->get("South")) {
+                m_outfit_displacement_south = southNode->value<Point>();
+            }
+            if (const OTMLNodePtr& westNode = node2->get("West")) {
+                m_outfit_displacement_west = westNode->value<Point>();
+            }
+
+            if (const OTMLNodePtr& opacityNode = node2->get("opacity")) {
+                m_opacity = opacityNode->value<float>();
+            }
+
+        } else if(node2->tag() == "effect-displacement") {
+            const OTMLNodePtr& xNode = node2->get("x");
+            const OTMLNodePtr& yNode = node2->get("y");
+
+            if(xNode && yNode) {
+                int x = xNode->value<int>();
+                int y = yNode->value<int>();
+                m_effect_displacement = Point(x, y);
+            }
+
+            if (const OTMLNodePtr& opacityNode = node2->get("opacity")) {
+                m_opacity = opacityNode->value<float>();
+            }
+
+        } else if(node2->tag() == "name-displacement") {
+            if (const OTMLNodePtr& northNode = node2->get("North")) {
+                m_name_displacement_north = northNode->value<Point>();
+            }
+            if (const OTMLNodePtr& eastNode = node2->get("East")) {
+                m_name_displacement_east = eastNode->value<Point>();
+            }
+            if (const OTMLNodePtr& southNode = node2->get("South")) {
+                m_name_displacement_south = southNode->value<Point>();
+            }
+            if (const OTMLNodePtr& westNode = node2->get("West")) {
+                m_name_displacement_west = westNode->value<Point>();
+            }
+        } else if(node2->tag() == "item-displacement") {
+            const OTMLNodePtr& xNode = node2->get("x");
+            const OTMLNodePtr& yNode = node2->get("y");
+
+            if(xNode && yNode) {
+                int x = xNode->value<int>();
+                int y = yNode->value<int>();
+                m_item_displacement = Point(x, y);
+            }
+
+            if (const OTMLNodePtr& opacityNode = node2->get("opacity")) {
+                m_opacity = opacityNode->value<float>();
+            }
+
+        } else if(node2->tag() == "notprewalkable") {
             m_attribs.set(ThingAttrNotPreWalkable, node2->value<bool>());
-        else if(node2->tag() == "image")
+        } else if(node2->tag() == "image") {
             m_customImage = node2->value();
-        else if(node2->tag() == "full-ground") {
-            if(node2->value<bool>())
+        } else if(node2->tag() == "full-ground") {
+            if(node2->value<bool>()) {
                 m_attribs.set(ThingAttrFullGround, true);
-            else
+            } else {
                 m_attribs.remove(ThingAttrFullGround);
+            }
         }
     }
 }

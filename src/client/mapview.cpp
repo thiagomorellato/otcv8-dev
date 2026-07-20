@@ -541,6 +541,14 @@ Rect MapView::calcFramebufferSource(const Size& destSize, bool inNextFrame)
     Size srcSize = destSize;
     Size srcVisible = m_visibleDimension * g_sprites.spriteSize();
     srcSize.scale(srcVisible, Fw::KeepAspectRatio);
+
+    if (isShake()) {
+        int max = m_followingCreature->getShakePower();
+        int min = -max;
+        drawOffset.x += (rand() % (max - min)) + min;
+        drawOffset.y += (rand() % (max - min)) + min;
+    }
+
     drawOffset.x += (srcVisible.width() - srcSize.width()) / 2;
     drawOffset.y += (srcVisible.height() - srcSize.height()) / 2;
 
@@ -661,3 +669,8 @@ void MapView::setCrosshair(const std::string& file)
 }
 
 /* vim: set ts=4 sw=4 et: */
+
+bool MapView::isShake()
+{
+    return m_followingCreature->isShake();
+}

@@ -52,7 +52,10 @@ public:
     bool isLoaded() { return m_loaded; }
 
     int spriteSize() { return m_spriteSize; }
-    float getOffsetFactor() const { return static_cast<float>(m_spriteSize) / 32.0f; }
+
+    float getOffsetFactor() const { return m_spriteOffset == 0 ? static_cast<float>(m_spriteSize) / 32.0f : m_spriteOffset; }
+    void setOffsetFactor(float f) { m_spriteOffset = f; }
+    
     bool isHdMod() const { return m_isHdMod; }
 
 private:
@@ -70,6 +73,7 @@ private:
     FileStreamPtr m_spritesFile;
     std::vector<std::vector<uint8_t>> m_sprites;
     std::unordered_map<uint32, std::string> m_cachedData;
+	float m_spriteOffset{ 0 };
 };
 
 extern SpriteManager g_sprites;

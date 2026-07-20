@@ -121,6 +121,7 @@ public:
     Point getPositionOffset(const Point& point, const Size& mapSize);
 
     MapViewPtr asMapView() { return static_self_cast<MapView>(); }
+    bool isShake();
 
 private:
     Rect calcFramebufferSource(const Size& destSize, bool inNextFrame = false);

@@ -27,8 +27,21 @@
 #include "thingtypemanager.h"
 #include <framework/graphics/drawqueue.h>
 
+struct EffectData {
+    uint8_t inFront; // na frente ou não
+    int16_t offsetX; // offset x
+    int16_t offsetY; // offset y
+};
+
+// Defina o mapa AttachedEffMap
+using AttachedEffMap = std::map<uint16_t, EffectData>;
+
 class Outfit
 {
+	
+protected:
+    Point wingsOffset;
+	
 public:
     Outfit();
 
@@ -37,8 +50,8 @@ public:
         return Color::getOutfitColor(color);
     }
 
-    void draw(Point dest, Otc::Direction direction, uint walkAnimationPhase, bool animate = true, LightView* lightView = nullptr, bool ui = false);
-    void draw(const Rect& dest, Otc::Direction direction, uint animationPhase, bool animate = true, bool ui = false, bool oldScaling = false);
+    void draw(Point dest, Otc::Direction direction, uint walkAnimationPhase, const Color& color, bool animate = true, LightView* lightView = nullptr, bool ui = false);
+    void draw(const Rect& dest, Otc::Direction direction, const Color& color, uint animationPhase, bool animate = true, bool ui = false, bool oldScaling = false);
 
     void setId(int id) { m_id = id; }
     void setAuxId(int id) { m_auxId = id; }
@@ -59,6 +72,7 @@ public:
     void resetClothes();
     void resetShader() { m_shader = ""; }
 
+	void setWingsOffset(Point offset) { wingsOffset = offset; }
     int getId() const { return m_id; }
     int getAuxId() const { return m_auxId; }
     int getHead() const { return m_head; }
@@ -69,15 +83,25 @@ public:
     int getMount() const { return m_mount; }
     int getWings() const { return m_wings; }
     int getAura() const { return m_aura; }
+    
     ThingCategory getCategory() const { return m_category; }
     std::string getShader() const { return m_shader; }
     int getHealthBar() const { return m_healthBar; }
     int getManaBar() const { return m_manaBar; }
 
+    void addAttachEffect(uint16_t effectId, uint8_t front) {
+        m_attachedEffects[effectId] = front;
+    }
+
+    void removeAttachEffect(uint16_t effectId) {
+		m_attachedEffects.erase(effectId);
+	}
+
 private:
     ThingCategory m_category;
     int m_id, m_auxId, m_head, m_body, m_legs, m_feet, m_addons, m_mount = 0, m_wings = 0, m_aura = 0;
     int m_healthBar = 0, m_manaBar = 0;
+    std::map<uint16_t, uint8_t> m_attachedEffects;
     std::string m_shader;
     bool m_center = false;
 };

@@ -47,6 +47,12 @@ void AnimatedText::drawText(const Point& dest, const Rect& visibleRect)
         p.x -= (4 * t / tf) + (8 * t * t / tftf);
     }
 
+
+    if(m_critical == 1){
+        m_cachedText.setFont(g_fonts.getFont("gotham-black-medium-14px-bordered"));
+        p.x -= (4 * t / tf) + (8 * t * t / tftf);
+    }
+
     p.y += (-48 * t) / tf;
     p += m_offset;
     Rect rect(p, textSize);

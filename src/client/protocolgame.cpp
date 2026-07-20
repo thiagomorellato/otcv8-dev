@@ -86,3 +86,23 @@ void ProtocolGame::onError(const boost::system::error_code& error)
     g_game.processConnectionError(error);
     disconnect();
 }
+
+void ProtocolGame::addItemInfo(const InputMessagePtr& msg, const ItemPtr& item)
+{
+    bool hasItem = msg->getU8();
+
+    if (hasItem) {
+
+        ItemInfo info;
+        info.ItemID = msg->getU64();
+        info.name = msg->getString();
+        uint8 ball = msg->getU8();
+        if (ball) {
+            info.pokeballInfo = msg->getString();
+        }
+
+        info.desc = msg->getString();
+
+        item->setItemInfo(info);
+    }
+}

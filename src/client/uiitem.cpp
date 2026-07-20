@@ -55,7 +55,11 @@ void UIItem::drawSelf(Fw::DrawPane drawPane)
         m_item->setColor(m_color);
         m_item->draw(drawRect);
 
-        if(m_font && m_showCount && (m_item->isStackable() || m_item->isChargeable()) && m_item->getCountOrSubType() > 1) {
+        if(m_font && m_showCount && (m_item->isStackable() || m_item->isChargeable()) && m_item->getCountOrSubType() > 1 || m_item->getCountOrSubType() > 1) {
+            BitmapFontPtr specialFont = g_fonts.getFont("terminus-10px");
+            if (m_item->getCountOrSubType() > 10000) {
+                g_drawQueue->addText(specialFont, m_countText, Rect(m_rect.topLeft(), m_rect.bottomRight() - Point(3, 0)), Fw::AlignBottomRight, Color(217, 0, 0));
+            } else
             g_drawQueue->addText(m_font, m_countText, Rect(m_rect.topLeft(), m_rect.bottomRight() - Point(3, 0)), Fw::AlignBottomRight, Color(231, 231, 231));
         }
 
@@ -143,13 +147,20 @@ void UIItem::onStyleApply(const std::string& styleName, const OTMLNodePtr& style
     }
 }
 
-void UIItem::cacheCountText()
-{
+void UIItem::cacheCountText() {
     int count = m_item->getCountOrSubType();
-    if (!g_game.getFeature(Otc::GameCountU16) || count < 1000) {
-        m_countText = std::to_string(count);
-        return;
+    if (g_game.getFeature(Otc::GameCountU16)) {
+        if (count < 1000) {
+            m_countText = std::to_string(count);
+        }
+        else if (count == 10000) {
+            m_countText = "10k";
+        }
+        else {
+            m_countText = std::to_string(count);
+        }
     }
-
-    m_countText = stdext::format("%.0fk", count / 1000.0);
+    else {
+        m_countText = std::to_string(count);
+    }
 }

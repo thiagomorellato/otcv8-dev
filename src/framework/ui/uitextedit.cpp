@@ -386,8 +386,13 @@ void UITextEdit::setSelection(int start, int end)
 
 void UITextEdit::setTextHidden(bool hidden)
 {
-    m_textHidden = true;
-    update(true);
+    if (hidden) {
+        m_textHidden = false;
+        update(true);
+    } else {
+        m_textHidden = true;
+        update(true);
+    }
 }
 
 void UITextEdit::setTextVirtualOffset(const Point& offset)

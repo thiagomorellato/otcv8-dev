@@ -40,6 +40,7 @@ public:
     void setText(const std::string& text);
     void setOffset(const Point& offset) { m_offset = offset; }
     void setFont(const std::string& fontName);
+    void setCritical() { m_critical = 1; }
 
     Color getColor() { return m_color; }
     const CachedText& getCachedText() const { return m_cachedText; }
@@ -60,6 +61,7 @@ private:
     Timer m_animationTimer;
     CachedText m_cachedText;
     Point m_offset;
+    int m_critical = 0;
 };
 
 #endif

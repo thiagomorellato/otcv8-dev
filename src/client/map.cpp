@@ -815,10 +815,10 @@ void Map::setAwareRange(const AwareRange& range)
 void Map::resetAwareRange()
 {
     AwareRange range;
-    range.left = 8;
-    range.top = 6;
-    range.bottom = 7;
-    range.right = 9;
+    range.left = 14;
+    range.top = 8;
+    range.bottom = 9;
+    range.right = 15;
     setAwareRange(range);
 }
 

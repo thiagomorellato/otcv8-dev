@@ -56,6 +56,7 @@ ItemPtr Item::create(int id, int countOrSubtype)
     ItemPtr item(new Item);
     item->setId(id);
     item->setCountOrSubType(countOrSubtype);
+	
     return item;
 }
 
@@ -87,6 +88,8 @@ void Item::draw(const Point& dest, bool animate, LightView* lightView)
     if (m_color != Color::alpha)
         color = m_color;
     size_t drawQueueSize = g_drawQueue->size();
+
+
     if (!m_shader.empty()) {
         rawGetThingType()->drawWithShader(dest, 0, xPattern, yPattern, zPattern, animationPhase, m_shader, color, lightView);
     }
@@ -113,6 +116,7 @@ void Item::draw(const Rect& dest, bool animate)
     Color color(Color::white);
     if (m_color != Color::alpha)
         color = m_color;
+	
 
     if (!m_shader.empty()) {
         rawGetThingType()->drawWithShader(dest, 0, xPattern, yPattern, zPattern, animationPhase, m_shader, color);
@@ -280,7 +284,7 @@ int Item::getSubType()
 
 int Item::getCount()
 {
-    if(isStackable())
+    if(isStackable() || m_countOrSubType > 1)
         return m_countOrSubType;
     return 1;
 }

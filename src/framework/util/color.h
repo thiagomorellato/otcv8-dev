@@ -60,6 +60,7 @@ public:
     void setGreen(float g) { m_g = g; }
     void setBlue(float b) { m_b = b; }
     void setAlpha(float a) { m_a = a; }
+    void setOpacity(float a) { m_a = a/100; }
 
     void setRGBA(uint8 r, uint8 g, uint8 b, uint8 a = 0xFF) { m_r = r/255.0f; m_g = g/255.0f; m_b = b/255.0f; m_a = a/255.0f; }
     void setRGBA(uint32 rgba) { setRGBA((rgba >> 0) & 0xff, (rgba >> 8) & 0xff, (rgba >> 16) & 0xff, (rgba >> 24) & 0xff); }

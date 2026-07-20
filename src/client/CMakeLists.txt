@@ -79,6 +79,8 @@ set(client_SOURCES ${client_SOURCES}
     # ui
     ${CMAKE_CURRENT_LIST_DIR}/uicreature.cpp
     ${CMAKE_CURRENT_LIST_DIR}/uicreature.h
+    ${CMAKE_CURRENT_LIST_DIR}/uieffect.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/uieffect.h
     ${CMAKE_CURRENT_LIST_DIR}/uiitem.cpp
     ${CMAKE_CURRENT_LIST_DIR}/uiitem.h
     ${CMAKE_CURRENT_LIST_DIR}/uigraph.cpp

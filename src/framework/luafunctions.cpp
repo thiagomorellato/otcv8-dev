@@ -264,6 +264,7 @@ void Application::registerLuaFunctions()
     g_lua.bindSingletonFunction("g_resources", "decompressArchive", &ResourceManager::decompressArchive, &g_resources);
     g_lua.bindSingletonFunction("g_resources", "setLayout", &ResourceManager::setLayout, &g_resources);
     g_lua.bindSingletonFunction("g_resources", "getLayout", &ResourceManager::getLayout, &g_resources);
+	g_lua.bindSingletonFunction("g_resources", "getFileTime", &ResourceManager::getFileTime, &g_resources);
 
     // Config
     g_lua.registerClass<Config>();

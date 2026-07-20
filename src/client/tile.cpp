@@ -68,18 +68,26 @@ void Tile::drawBottom(const Point& dest, LightView* lightView)
     if (m_fill != Color::alpha)
         return;
 
-    // bottom things, only when GameMapDrawGroundFirst is active
-    if (g_game.getFeature(Otc::GameMapDrawGroundFirst)) {
+   // bottom things, only when GameMapDrawGroundFirst is active
+    if (g_game.getFeature(Otc::GameMapDrawGroundFirst))
+    {
         bool afterBottom = false;
-        for (const ThingPtr& thing : m_things) {
-            if (thing->isOnBottom())
+        for (const ThingPtr& thing : m_things)
+        {
+            if (thing->isOnBottom() || thing->isGround() && thing->blockProjectile()) // Fix Mountain GameMapDrawGroundFirst
                 afterBottom = true;
+
             if (!thing->isGround() && !thing->isGroundBorder() && !thing->isOnBottom())
                 break;
+
             if (thing->isHidden() || !afterBottom)
                 continue;
 
-            thing->draw(dest - m_drawElevation * g_sprites.getOffsetFactor(), true, lightView);
+            auto thingType = thing->rawGetThingType();
+            Point displacement = thingType->getItemDisplacement();
+
+            Point drawDest = dest + displacement;
+            thing->draw(drawDest - m_drawElevation * g_sprites.getOffsetFactor(), true, lightView);
             m_drawElevation = std::min<uint8_t>(m_drawElevation + thing->getElevation(), Otc::MAX_ELEVATION);
         }
     }
@@ -93,7 +101,11 @@ void Tile::drawBottom(const Point& dest, LightView* lightView)
         if (thing->isHidden())
             continue;
 
-        thing->draw(dest - m_drawElevation * g_sprites.getOffsetFactor() , true, lightView);
+        auto thingType = thing->rawGetThingType();
+        Point displacement = thingType->getItemDisplacement();
+
+        Point drawDest = dest + displacement;
+        thing->draw(drawDest - m_drawElevation * g_sprites.getOffsetFactor(), true, lightView);
         m_drawElevation = std::min<uint8_t>(m_drawElevation + thing->getElevation(), Otc::MAX_ELEVATION);
 
         if (thing->isLyingCorpse()) {
@@ -193,7 +205,11 @@ void Tile::drawTop(const Point& dest, LightView* lightView)
     for (const ThingPtr& thing : m_things) {
         if (!thing->isOnTop() || thing->isHidden())
             continue;
-        thing->draw(dest, true, lightView);
+        auto thingType = thing->rawGetThingType();
+        Point displacement = thingType->getItemDisplacement();
+
+        Point drawDest = dest + displacement;
+        thing->draw(drawDest, true, lightView);
     }
 }
 

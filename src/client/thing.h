@@ -81,6 +81,7 @@ public:
     virtual int getDisplacementY() { return rawGetThingType()->getDisplacementY(); }
     virtual int getExactSize(int layer, int xPattern, int yPattern, int zPattern, int animationPhase) { return rawGetThingType()->getExactSize(layer, xPattern, yPattern, zPattern, animationPhase); }
     int getLayers() { return rawGetThingType()->getLayers(); }
+    bool canFly() { return getId() == 470 || getId() == 10764 || getId() == 10765 || getId() == 10766; }
     int getNumPatternX() { return rawGetThingType()->getNumPatternX(); }
     int getNumPatternY() { return rawGetThingType()->getNumPatternY(); }
     int getNumPatternZ() { return rawGetThingType()->getNumPatternZ(); }

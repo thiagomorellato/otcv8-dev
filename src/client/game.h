@@ -346,6 +346,16 @@ public:
     bool canPerformGameAction();
     bool checkBotProtection();
 
+    void setEffectOpacity(float value) {
+        m_opacity = value;
+    }
+
+    float getEffectOpacity() {
+        return m_opacity;
+    }
+
+    float m_opacity = 1.0f;
+
     bool isOnline() { return m_online; }
     bool isLogging() { return !m_online && m_protocolGame; }
     bool isDead() { return m_dead; }

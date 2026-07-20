@@ -78,6 +78,8 @@ public:
     void addWalkingCreature(const CreaturePtr& creature);
     void removeWalkingCreature(const CreaturePtr& creature);
 
+    bool canFly() { return !getGround() || getGround()->canFly(); }
+
     void addThing(const ThingPtr& thing, int stackPos);
     bool removeThing(ThingPtr thing);
     ThingPtr getThing(int stackPos);

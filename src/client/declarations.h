@@ -99,6 +99,7 @@ typedef stdext::shared_object_ptr<ProtocolLogin> ProtocolLoginPtr;
 // ui
 class UIItem;
 class UICreature;
+class UIEffect;
 class UIGraph;
 class UIMap;
 class UIMinimap;
@@ -109,6 +110,7 @@ class UISprite;
 
 typedef stdext::shared_object_ptr<UIItem> UIItemPtr;
 typedef stdext::shared_object_ptr<UICreature> UICreaturePtr;
+typedef stdext::shared_object_ptr<UIEffect> UIEffectPtr;
 typedef stdext::shared_object_ptr<UIGraph> UIGraphPtr;
 typedef stdext::shared_object_ptr<UISprite> UISpritePtr;
 typedef stdext::shared_object_ptr<UIMap> UIMapPtr;

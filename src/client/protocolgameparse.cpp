@@ -30,6 +30,7 @@
 #include "item.h"
 #include "effect.h"
 #include "missile.h"
+#include "creature.h"
 #include "tile.h"
 #include "luavaluecasts_client.h"
 #include <framework/core/eventdispatcher.h>
@@ -222,6 +223,12 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
             case Proto::GameServerCreatureSkull:
                 parseCreatureSkulls(msg);
                 break;
+            case Proto::GameUpdateNameColor:
+                parseUpdateNameColor(msg);
+                break;
+            case Proto::GameUpdateNickname:
+                parseUpdateCreatureNickname(msg);
+                break;
             case Proto::GameServerCreatureParty:
                 parseCreatureShields(msg);
                 break;
@@ -243,6 +250,12 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
                 break;
             case Proto::GameServerPlayerSkills:
                 parsePlayerSkills(msg);
+                break;
+            case Proto::GameSetFly:
+                parsePlayerFly(msg);
+                break;
+            case Proto::GameServerCreatureScreenShake:
+                parseCreatureScreenShake(msg);
                 break;
             case Proto::GameServerPlayerState:
                 parsePlayerState(msg);
@@ -527,6 +540,12 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
             case Proto::GameServerProgressBar:
                 parseProgressBar(msg);
                 break;
+            case Proto::GameServerJump:
+                parseJump(msg);
+                break;
+            case Proto::GameFirstTitle:
+                parseFirstTitle(msg);
+                break;
             case Proto::GameServerFeatures:
                 parseFeatures(msg);
                 break;
@@ -553,6 +572,9 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
                 break;
             case Proto::GameServerWindowsRequests:
                 parseWindowsRequest(msg);
+                break;
+            case Proto::GameServerMonsterCallbacks:
+                parseMonsterCallbacks(msg);
                 break;
             default:
                 stdext::throw_exception(stdext::format("unhandled opcode %d", (int)opcode));
@@ -1280,8 +1302,10 @@ void ProtocolGame::parseOpenContainer(const InputMessagePtr& msg)
     int itemCount = msg->getU8();
 
     std::vector<ItemPtr> items(itemCount);
-    for (int i = 0; i < itemCount; i++)
+    for (int i = 0; i < itemCount; i++) {
         items[i] = getItem(msg);
+        addItemInfo(msg, items[i]);
+    }
 
     g_game.processOpenContainer(containerId, containerItem, name, capacity, hasParent, items, isUnlocked, hasPages, containerSize, firstIndex);
 }
@@ -1300,6 +1324,7 @@ void ProtocolGame::parseContainerAddItem(const InputMessagePtr& msg)
         slot = msg->getU16(); // slot
     }
     ItemPtr item = getItem(msg);
+    addItemInfo(msg, item);
     g_game.processContainerAddItem(containerId, item, slot);
 }
 
@@ -1313,6 +1338,7 @@ void ProtocolGame::parseContainerUpdateItem(const InputMessagePtr& msg)
         slot = msg->getU8();
     }
     ItemPtr item = getItem(msg);
+    addItemInfo(msg, item);
     g_game.processContainerUpdateItem(containerId, slot, item);
 }
 
@@ -1337,6 +1363,7 @@ void ProtocolGame::parseAddInventoryItem(const InputMessagePtr& msg)
 {
     int slot = msg->getU8();
     ItemPtr item = getItem(msg);
+    addItemInfo(msg, item);
     g_game.processInventoryChange(slot, item);
 }
 
@@ -1525,18 +1552,28 @@ void ProtocolGame::parseAnimatedText(const InputMessagePtr& msg)
     Position position = getPosition(msg);
     int color = msg->getU8();
     std::string font;
-    if(g_game.getFeature(Otc::GameAnimatedTextCustomFont))
+    if (g_game.getFeature(Otc::GameAnimatedTextCustomFont))
         font = msg->getString();
+
     std::string text = msg->getString();
 
+    int isCritical = msg->getU8();
+
     AnimatedTextPtr animatedText = AnimatedTextPtr(new AnimatedText);
+
     animatedText->setColor(color);
     animatedText->setText(text);
-    if (font.size())
+
+    if (isCritical == 1) {
+        animatedText->setCritical();
+    }
+
+    if (!font.empty())
         animatedText->setFont(font);
 
     g_map.addThing(animatedText, position);
 }
+
 
 void ProtocolGame::parseDistanceMissile(const InputMessagePtr& msg)
 {
@@ -1636,10 +1673,15 @@ void ProtocolGame::parseCreatureOutfit(const InputMessagePtr& msg)
     Outfit outfit = getOutfit(msg);
 
     CreaturePtr creature = g_map.getCreatureById(id);
-    if (creature)
+    if (creature) {
+        for (const auto& it : creature->getAttachedEffects()) {
+            outfit.addAttachEffect(it.first, it.second);
+        }
         creature->setOutfit(outfit);
-    else
+    }
+    else {
         g_logger.traceError("could not get creature");
+    }
 }
 
 void ProtocolGame::parseCreatureSpeed(const InputMessagePtr& msg)
@@ -1678,6 +1720,8 @@ void ProtocolGame::parseCreatureSkulls(const InputMessagePtr& msg)
     else
         g_logger.traceError("could not get creature");
 }
+
+
 
 void ProtocolGame::parseCreatureShields(const InputMessagePtr& msg)
 {
@@ -2074,6 +2118,27 @@ void ProtocolGame::parsePlayerState(const InputMessagePtr& msg)
         states = msg->getU8();
 
     m_localPlayer->setStates(states);
+}
+void ProtocolGame::parsePlayerFly(const InputMessagePtr& msg)
+{
+    int fly = msg->getU8();
+    uint32 id = msg->getU32();
+
+    CreaturePtr creature = g_map.getCreatureById(id);
+    if (!creature)
+        creature = m_localPlayer;
+
+    if (fly == 1)
+        creature->setFly(true);
+    else
+        creature->setFly(false);
+}
+
+void ProtocolGame::parseCreatureScreenShake(const InputMessagePtr& msg)
+{
+    uint32_t intensity = msg->getU32();
+    uint32_t duration = msg->getU32();
+    m_localPlayer->screenShake(intensity, duration);
 }
 
 void ProtocolGame::parsePlayerCancelAttack(const InputMessagePtr& msg)
@@ -3098,6 +3163,11 @@ void ProtocolGame::parseExtendedOpcode(const InputMessagePtr& msg)
     else
         callLuaField("onExtendedOpcode", opcode, buffer);
 }
+ 
+void ProtocolGame::parseMonsterCallbacks(const InputMessagePtr& msg)
+{
+    callLuaField("onCallback", msg);
+}
 
 void ProtocolGame::parseChangeMapAwareRange(const InputMessagePtr& msg)
 {
@@ -3122,6 +3192,58 @@ void ProtocolGame::parseProgressBar(const InputMessagePtr& msg)
     CreaturePtr creature = g_map.getCreatureById(id);
     if (creature)
         creature->setProgressBar(duration, ltr);
+        
+    else
+        g_logger.traceError(stdext::format("could not get creature with id %d", id));
+}
+
+void ProtocolGame::parseJump(const InputMessagePtr& msg)
+{
+    uint32 id = msg->getU32();
+    uint32 height = msg->getU32();
+    uint32 duration = msg->getU32();
+    CreaturePtr creature = g_map.getCreatureById(id);
+    if (creature)
+        creature->jump(height, duration);
+    else
+        g_logger.traceError(stdext::format("could not get creature with id %d", id));
+}
+
+
+void ProtocolGame::parseUpdateNameColor(const InputMessagePtr& msg)
+{
+    uint32 id = msg->getU32();
+    uint8_t nameColor = msg->getU8();
+        //g_logger.info("Calling parseUpdateNameColor");
+    CreaturePtr creature = g_map.getCreatureById(id);
+    if (creature)
+        creature->setNameColor(nameColor);
+    else
+        g_logger.traceError("could not get creature");
+}
+
+void ProtocolGame::parseUpdateCreatureNickname(const InputMessagePtr& msg)
+{
+    uint32 id = msg->getU32();
+    std::string nickname = msg->getString();
+    CreaturePtr creature = g_map.getCreatureById(id);
+    if (creature)
+        creature->setName(nickname);
+    else
+        g_logger.traceError("could not get creature");
+}
+
+
+
+void ProtocolGame::parseFirstTitle(const InputMessagePtr& msg)
+{
+    uint32 id = msg->getU32();
+	std::string title = msg->getString();
+	std::string font = msg->getString();
+	std::string color = msg->getString();
+    CreaturePtr creature = g_map.getCreatureById(id);
+    if (creature)
+        creature->setTitle(title, font, color);
     else
         g_logger.traceError(stdext::format("could not get creature with id %d", id));
 }
@@ -3408,6 +3530,7 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type)
         } else {
             uint removeId = msg->getU32();
             uint id = msg->getU32();
+           
             if (id == removeId) {
                 creature = g_map.getCreatureById(id);
             } else {
@@ -3425,13 +3548,16 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type)
                     creatureType = Proto::CreatureTypePlayer;
                 else if (id >= Proto::MonsterStartId && id < Proto::MonsterEndId)
                     creatureType = Proto::CreatureTypeMonster;
-                else
+                else if (id >= Proto::NpcStartId && id < Proto::NpcEndId)
                     creatureType = Proto::CreatureTypeNpc;
+                else
+                    creatureType = Proto::CreatureTypeMonster; // Proto::CreatureTypeDuelist;
             }
 
             if (g_game.getFeature(Otc::GameTibia12Protocol) && creatureType == Proto::CreatureTypeSummonOwn)
                 msg->getU32(); // master
 
+            
             std::string name = g_game.formatCreatureName(msg->getString());
 
             if (creature) {
@@ -3449,7 +3575,9 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type)
                     creature = MonsterPtr(new Monster);
                 else if (creatureType == Proto::CreatureTypeNpc)
                     creature = NpcPtr(new Npc);
-                else if (creatureType == Proto::CreatureTypeSummonOwn) {
+                else if (creatureType == Proto::CreatureTypeSummonOwn)
+                    creature = MonsterPtr(new Monster);
+                else if (creatureType == Proto::CreatureTypeDuelist) {
                     creature = MonsterPtr(new Monster);
                 } else
                     g_logger.traceError("creature type is invalid");
@@ -3463,6 +3591,7 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type)
             }
         }
 
+		int nameColor = msg->getU8();   
         int healthPercent = msg->getU8();
         int8 manaPercent = -1;
         if (g_game.getFeature(Otc::GameCreaturesMana)) {
@@ -3525,11 +3654,50 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type)
         if (g_game.getProtocolVersion() >= 854 || g_game.getFeature(Otc::GameCreatureWalkthrough))
             unpass = msg->getU8();
 
+        
+        bool isPoke = msg->getU32();
+        std::string nickname = g_game.formatCreatureName(msg->getString());
+        int iconCount = msg->getU8();
+        std::vector<std::tuple<std::string, int16_t, int16_t>> iconVector;
+        for (int i = 0; i < iconCount; ++i) {
+            std::string iconName = msg->getString();
+            int16_t pointX = msg->getU16();
+            int16_t pointY = msg->getU16();
+            iconVector.push_back(std::make_tuple(iconName, pointX, pointY));
+        }
+        
+        if (!nickname.empty()) {
+            creature->setName(nickname); // setando nickname caso exista.
+        }
+        std::string title = msg->getString();
+        std::string titleFont  = msg->getString();
+        std::string titleColor = msg->getString();
+
+        int isMonster = msg->getU8();
+
+        if (isMonster == 1) {
+            int isGhost = msg->getU8();
+            if (isGhost == 1) {
+                creature->isGhost = true;
+            }
+        }
+
+        int attachedEffCount = msg->getU8();
+        for (int i = 0; i < attachedEffCount; ++i) {
+            uint16_t effId = msg->getU16();
+            uint8_t front = msg->getU8();
+            outfit.addAttachEffect(effId, front);
+            creature->addAttachEffect(effId, front);
+        }
+        
         if (creature) {
+            creature->setNameColor(nameColor);
+            creature->isPokemon = isPoke;
             creature->setHealthPercent(healthPercent);
             if (g_game.getFeature(Otc::GameCreaturesMana)) {
                 creature->setManaPercent(manaPercent);
             }
+            creature->setTitle(title, titleFont, titleColor);
             creature->setDirection(direction);
             creature->setOutfit(outfit);
             creature->setSpeed(speed);
@@ -3537,6 +3705,7 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type)
             creature->setShield(shield);
             creature->setPassable(!unpass);
             creature->setLight(light);
+            creature->setCustomIcons(iconVector);
 
             if (emblem != -1)
                 creature->setEmblem(emblem);

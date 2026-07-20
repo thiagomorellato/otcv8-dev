@@ -71,6 +71,13 @@ enum ItemAttr : uint8
     ATTR_ATTRIBUTE_MAP = 128
 };
 
+struct ItemInfo {
+    uint64 ItemID;
+    std::string name;
+    std::string desc;
+    std::string pokeballInfo;
+};
+
 // @bindclass
 #pragma pack(push,1) // disable memory alignment
 class Item : public Thing
@@ -154,6 +161,9 @@ public:
     int calculateAnimationPhase(bool animate);
     int getExactSize(int layer = 0, int xPattern = 0, int yPattern = 0, int zPattern = 0, int animationPhase = 0);
 
+    void setItemInfo(const ItemInfo& info) { m_itemInfo = info; }
+    ItemInfo getItemInfo() { return m_itemInfo; }
+
     const ThingTypePtr& getThingType();
     ThingType *rawGetThingType();
 
@@ -178,6 +188,12 @@ private:
     uint32 m_quickLootFlags;
     uint8 m_phase;
     ticks_t m_lastPhase;
+
+    ItemInfo m_itemInfo;
+    bool hasItem;
+
+    PokeballInfo m_pokeballInfo;
+    bool m_isPokeball{ false };
 
     stdext::packed_storage<uint16> m_customAttribs;
 };

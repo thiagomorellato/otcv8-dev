@@ -24,6 +24,7 @@
 #include "thingtypemanager.h"
 #include "map.h"
 #include "tile.h"
+#include "game.h"
 #include "spritemanager.h"
 #include <framework/core/clock.h>
 #include <framework/core/eventdispatcher.h>
@@ -62,9 +63,10 @@ void Missile::draw(const Point& dest, bool animate, LightView* lightView)
         xPattern = 1;
         yPattern = 1;
     }
-
+    Color color = Color::white;
+    color.setOpacity(g_game.getEffectOpacity());
     float fraction = m_animationTimer.ticksElapsed() / m_duration;
-    rawGetThingType()->draw(dest + m_delta * fraction, 0, xPattern, yPattern, 0, 0, Color::white, lightView);
+    rawGetThingType()->draw(dest + m_delta * fraction, 0, xPattern, yPattern, 0, 0, color, lightView);
 }
 
 void Missile::setPath(const Position& fromPosition, const Position& toPosition)

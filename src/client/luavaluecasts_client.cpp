@@ -62,6 +62,7 @@ int push_luavalue(const Outfit& outfit)
         g_lua.pushInteger(outfit.getManaBar());
         g_lua.setField("manaBar");
     }
+
     return 1;
 }
 
@@ -343,6 +344,36 @@ bool luavalue_cast(int index, UnjustifiedPoints& unjustifiedPoints)
         unjustifiedPoints.killsMonthRemaining = g_lua.popInteger();
         g_lua.getField("skullTime", index);
         unjustifiedPoints.skullTime = g_lua.popInteger();
+        return true;
+    }
+    return false;
+}
+
+int push_luavalue(const ItemInfo& info)
+{
+    g_lua.createTable(0, 3);
+    g_lua.pushInteger(info.ItemID);
+    g_lua.setField("ItemID");
+    g_lua.pushString(info.name);
+    g_lua.setField("name");
+    g_lua.pushString(info.desc);
+    g_lua.setField("desc");
+    g_lua.pushString(info.pokeballInfo);
+    g_lua.setField("pokeballInfo");
+    return 1;
+}
+
+bool luavalue_cast(int index, ItemInfo& info)
+{
+    if (g_lua.isTable(index)) {
+        g_lua.getField("ItemID", index);
+        info.ItemID = g_lua.popInteger();
+        g_lua.getField("name", index);
+        info.name = g_lua.popString();
+        g_lua.getField("desc", index);
+        info.desc = g_lua.popString();
+        g_lua.getField("pokeballInfo", index);
+        info.pokeballInfo = g_lua.popString();
         return true;
     }
     return false;

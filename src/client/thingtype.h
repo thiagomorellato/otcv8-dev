@@ -166,6 +166,13 @@ struct DrawOutfitParams {
     Color color;
 };
 
+struct PokeballInfo {
+    uint8 state;
+    uint32 portraitId;
+    uint32 level;
+    uint32 specialIcon;
+};
+
 class ThingType : public LuaObject
 {
 public:
@@ -192,6 +199,58 @@ public:
     bool hasAttr(ThingAttr attr) { return m_attribs.has(attr); }
     bool isLoaded() { return m_loaded; }
     ticks_t getLastUsage() { return m_lastUsage; }
+
+    Point getOutfitDisplacementByDirection(Otc::Direction direction) const {
+        switch (direction) {
+        case Otc::North:
+            return m_outfit_displacement_north;
+        case Otc::NorthEast:
+            return m_outfit_displacement_east;
+        case Otc::NorthWest:
+            return m_outfit_displacement_west;
+
+        case Otc::East:
+            return m_outfit_displacement_east;
+        case Otc::West:
+            return m_outfit_displacement_west;
+
+        case Otc::South:
+            return m_outfit_displacement_south;
+        case Otc::SouthEast:
+            return m_outfit_displacement_east;
+        case Otc::SouthWest:
+            return m_outfit_displacement_west;
+
+        default:
+            return Point(0, 0);
+        }
+    }
+
+	Point getNameDisplacementByDirection(Otc::Direction direction) const {
+        switch (direction) {
+        case Otc::North:
+            return m_name_displacement_north;
+        case Otc::NorthEast:
+            return m_name_displacement_east;
+        case Otc::NorthWest:
+            return m_name_displacement_west;
+
+        case Otc::East:
+            return m_name_displacement_east;
+        case Otc::West:
+            return m_name_displacement_west;
+
+        case Otc::South:
+            return m_name_displacement_south;
+        case Otc::SouthEast:
+            return m_name_displacement_east;
+        case Otc::SouthWest:
+            return m_name_displacement_west;
+
+        default:
+            return Point(0, 0);
+        }
+	}
 
     Size getSize() { return m_size; }
     int getWidth() { return m_size.width(); }
@@ -262,6 +321,11 @@ public:
     std::vector<int> getSprites() { return m_spritesIndex; }
 
     // additional
+
+	Point getOutfitDisplacement() { return m_outfit_displacement; }
+    Point getEffectDisplacement() { return m_effect_displacement; }
+    Point getItemDisplacement() const { return m_item_displacement; }
+	Point getNameDisplacement() { return m_name_displacement; }
     float getOpacity() { return m_opacity; }
     bool isNotPreWalkable() { return m_attribs.has(ThingAttrNotPreWalkable); }
     void setPathable(bool var);
@@ -290,13 +354,24 @@ private:
     int m_elevation;
     float m_opacity;
     std::string m_customImage;
-
+	Point m_outfit_displacement;
+    Point m_effect_displacement;
+    Point m_item_displacement;
+	Point m_name_displacement;
     std::vector<int> m_spritesIndex;
     std::vector<TexturePtr> m_textures;
     std::vector<std::vector<Rect>> m_texturesFramesRects;
     std::vector<std::vector<Rect>> m_texturesFramesOriginRects;
     std::vector<std::vector<Point>> m_texturesFramesOffsets;
 
+	Point m_outfit_displacement_north;
+    Point m_outfit_displacement_east;
+    Point m_outfit_displacement_south;
+    Point m_outfit_displacement_west;
+    Point m_name_displacement_north;
+    Point m_name_displacement_east;
+    Point m_name_displacement_south;
+    Point m_name_displacement_west;
     bool m_loaded = false;
     time_t m_lastUsage;
 };

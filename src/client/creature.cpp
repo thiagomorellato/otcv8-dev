@@ -32,6 +32,7 @@
 #include "lightview.h"
 #include "healthbars.h"
 
+#include <framework/graphics/image.h>
 #include <framework/graphics/graphics.h>
 #include <framework/core/eventdispatcher.h>
 #include <framework/core/clock.h>
@@ -84,6 +85,7 @@ void Creature::draw(const Point& dest, bool animate, LightView* lightView)
     if (!canBeSeen())
         return;
 
+    const ThingTypePtr& thingType = getThingType();
     const int sprSize = g_sprites.spriteSize();
     Point jumpOffset = Point(m_jumpOffset.x, m_jumpOffset.y);
     Point creatureCenter = dest - jumpOffset + m_walkOffset - getDisplacement() + Point(sprSize / 2, sprSize / 2);
@@ -91,23 +93,55 @@ void Creature::draw(const Point& dest, bool animate, LightView* lightView)
 
     Point animationOffset = animate ? m_walkOffset : Point(0, 0);
 
+    TexturePtr targetTexture = g_textures.getTexture("data/images/ui/target.png");
+
     if (m_showTimedSquare && animate) {
-        g_drawQueue->addBoundingRect(Rect(dest - jumpOffset + (animationOffset - getDisplacement() + 2 * g_sprites.getOffsetFactor()), Size(sprSize - 4 * g_sprites.getOffsetFactor(), sprSize - 4 * g_sprites.getOffsetFactor())), 2 * g_sprites.getOffsetFactor(), m_timedSquareColor);
+        int targetSize = getExactSize(getLayers(), getNumPatternX(), getNumPatternY(), getNumPatternZ(), getAnimationPhases());
+
+        Point adjustedTargetPos = dest - jumpOffset + animationOffset - getDisplacement() + Point((sprSize - targetSize) / 2, (sprSize - targetSize) / 2);
+         
+        Rect targetRect = Rect(adjustedTargetPos, Size(targetSize, targetSize));
+
+        g_drawQueue->addTexturedRect(targetRect, targetTexture, Rect(0, 0, targetTexture->getWidth(), targetTexture->getHeight()), m_timedSquareColor);
     }
 
+
     if (m_showStaticSquare && animate) {
-        g_drawQueue->addBoundingRect(Rect(dest - jumpOffset + (animationOffset - getDisplacement()), Size(sprSize, sprSize)), 2 * g_sprites.getOffsetFactor(), m_staticSquareColor);
+        int targetSize = getExactSize(getLayers(), getNumPatternX(), getNumPatternY(), getNumPatternZ(), getAnimationPhases());
+
+        Point adjustedTargetPos = dest - jumpOffset + animationOffset - getDisplacement() + Point((sprSize - targetSize) / 2, (sprSize - targetSize) / 2);
+
+        Rect targetRect = Rect(adjustedTargetPos, Size(targetSize, targetSize));
+        g_drawQueue->addTexturedRect(targetRect, targetTexture, Rect(0, 0, targetTexture->getWidth(), targetTexture->getHeight()), m_staticSquareColor);
     }
+
+Point displacement = thingType->getOutfitDisplacementByDirection(m_walking ? m_walkDirection : m_direction);
 
     if (m_outfit.getCategory() != ThingCategoryCreature)
         animationOffset -= getDisplacement();
 
+
+    drawShadow(dest - jumpOffset + animationOffset);
     size_t drawQueueSize = g_drawQueue->size();
-    m_outfit.draw(dest - jumpOffset + animationOffset, m_walking ? m_walkDirection : m_direction, m_walkAnimationPhase, true, lightView);
+    
     if (m_marked) {
-        g_drawQueue->setMark(drawQueueSize, updatedMarkedColor());
+        //g_logger.info("Size: " + std::to_string(getExactSize(getLayers(), getNumPatternX(), getNumPatternY(), getNumPatternZ(), getAnimationPhases())));
+        int targetSize = getExactSize(getLayers(), getNumPatternX(), getNumPatternY(), getNumPatternZ(), getAnimationPhases());
+
+        Point adjustedTargetPos = dest - jumpOffset + animationOffset - getDisplacement() + Point((sprSize - targetSize) / 2, (sprSize - targetSize) / 2);
+        Rect targetRect = Rect(adjustedTargetPos, Size(targetSize, targetSize));
+        g_drawQueue->addTexturedRect(targetRect, targetTexture, Rect(0, 0, targetTexture->getWidth(), targetTexture->getHeight()), m_markedColor);
+        updatedMarkedColor();
     }
 
+	m_outfit.setWingsOffset(getWingsOffset());
+    Color color = Color::white;
+    if (isGhost) {
+        color.setOpacity(50.0);
+    }
+
+    m_outfit.draw(dest - jumpOffset + animationOffset + displacement, m_walking ? m_walkDirection : m_direction, m_walkAnimationPhase, color, true, lightView);
+    
     drawTopWidgets(creatureCenter, m_walking ? m_walkDirection : m_direction);
 
     Light light = rawGetThingType()->getLight();
@@ -120,9 +154,35 @@ void Creature::draw(const Point& dest, bool animate, LightView* lightView)
         if (light.color == 0 || light.color > 215)
             light.color = 215;
     }
-    
-    if(lightView)
+
+    if (lightView)
         lightView->addLight(creatureCenter, light);
+}
+
+
+void Creature::drawShadow(const Point& dest) {
+    if (!isFlying())
+        return;
+
+    // if(m_flyDist == 0) {
+    //     return;
+    // }
+
+    const auto& color = Color(0.f, 0.f, 0.f, std::max<float>(.1f, .7f - ((m_flyDist+1) / 10.f)));
+
+    const float oldFactor = g_sprites.getOffsetFactor();
+
+    auto _dest = dest;
+    _dest += ((60 + (m_flyDist * 7)) * oldFactor);
+
+    const auto& oldShader = m_outfit.getShader();
+
+    m_outfit.setShader("");
+    g_sprites.setOffsetFactor((1.f - (m_flyDist / 10.f) / 4) * oldFactor);
+    m_outfit.draw(_dest, m_walking ? m_walkDirection : m_direction, m_walkAnimationPhase, color, true, nullptr);
+    g_sprites.setOffsetFactor(oldFactor);
+
+    m_outfit.setShader(oldShader);
 }
 
 void Creature::drawOutfit(const Rect& destRect, Otc::Direction direction, const Color& color, bool animate, bool ui, bool oldScaling)
@@ -130,43 +190,53 @@ void Creature::drawOutfit(const Rect& destRect, Otc::Direction direction, const 
     if (direction == Otc::InvalidDirection)
         direction = m_direction;
 
-    m_outfit.draw(destRect, direction, 0, animate, ui, oldScaling);
+    m_outfit.draw(destRect, direction, color, 0, animate, ui, oldScaling);
 }
 
 void Creature::drawInformation(const Point& point, bool useGray, const Rect& parentRect, int drawFlags)
 {
-    if (!g_game.getFeature(Otc::GameOldInformationBar) && g_game.getClientVersion() >= 760) {
-        if (m_healthPercent < 1)  // creature is dead, we get rid of its information bar
+    if (!g_game.getFeature(Otc::GameOldInformationBar) && g_game.getClientVersion() >= 760)
+    {
+        if (m_healthPercent < 1) // creature is dead, we get rid of its information bar
             return;
     }
 
+    const ThingTypePtr& thingType = getThingType();
+    Point nameDisplacement = thingType->getNameDisplacementByDirection(m_direction);
+
     Color fillColor = Color(96, 96, 96);
+    Color nameColor = Color(96, 96, 96);
 
     if (!useGray)
         fillColor = m_informationColor;
 
-    // calculate main rects - hp/mana
-    Rect backgroundRect = Rect(point.x + m_informationOffset.x - (13.5), point.y + m_informationOffset.y, 27, 4);
+    // calculate main rects
+    Rect backgroundRect = Rect(point.x + m_informationOffset.x - 13.5 + nameDisplacement.x, 
+                               point.y + m_informationOffset.y + nameDisplacement.y, 27, 4);
+
     backgroundRect.bind(parentRect);
 
-    //debug            
-    if (g_extras.debugWalking) {
-        int footDelay = (getStepDuration(true)) / 3;
+    // debug
+    if (g_extras.debugWalking)
+    {
+        int footDelay = (getStepDuration()) / 1;
         int footAnimPhases = getWalkAnimationPhases() - 1;
         m_nameCache.setText(stdext::format("%i %i %i %i %i\n %i %i\n%i %i %i\n%i %i %i %i %i",
-            (int)m_stepDuration, (int)getStepDuration(true), getStepDuration(false), (int)m_walkedPixels, (int)m_walkTimer.ticksElapsed(),
-                                           (int)m_walkOffset.x, (int)m_walkOffset.y,
-                                           (int)m_speed, (int)getTile()->getGroundSpeed(), (int)g_game.getWalkId(),
-                                           (int)(g_clock.millis() - m_footLastStep), (int)footDelay, (int)footAnimPhases, (int)m_walkAnimationPhase, (int)stdext::millis()));
+            (int)m_stepDuration, (int)getStepDuration(), getStepDuration(false), (int)m_walkedPixels, (int)m_walkTimer.ticksElapsed(),
+            (int)m_walkOffset.x, (int)m_walkOffset.y,
+            (int)m_speed, (int)getTile()->getGroundSpeed(), (int)g_game.getWalkId(),
+            (int)(g_clock.millis() - m_footLastStep), (int)footDelay, (int)footAnimPhases, (int)m_walkAnimationPhase, (int)stdext::millis()));
     }
 
     Size nameSize = m_nameCache.getTextSize();
-    Rect textRect = Rect(point.x + m_informationOffset.x - nameSize.width() / 2.0, point.y + m_informationOffset.y - 12, nameSize);
+    Rect textRect = Rect((point.x + m_informationOffset.x - nameSize.width() / 2.0 )+ (nameDisplacement.x + 5), 
+                         point.y + m_informationOffset.y - 14 + nameDisplacement.y, nameSize);
     textRect.bind(parentRect);
 
     // distance them
     uint32 offset = 12;
-    if (isLocalPlayer()) {
+    if (isLocalPlayer())
+    {
         offset *= 2;
     }
 
@@ -177,16 +247,24 @@ void Creature::drawInformation(const Point& point, bool useGray, const Rect& par
 
     HealthBarPtr healthBar = nullptr;
     HealthBarPtr manaBar = nullptr;
-    if (g_game.getFeature(Otc::GameHealthInfoBackground)) {
-        if (m_outfit.getHealthBar() > 0) {
+
+    // healthBar->setHeight(9);
+    // manaBar->setHeight(9);
+
+    if (g_game.getFeature(Otc::GameHealthInfoBackground))
+    {
+        if (m_outfit.getHealthBar() > 0)
+        {
             healthBar = g_healthBars.getHealthBar(m_outfit.getHealthBar());
         }
-        if (m_outfit.getManaBar() > 0) {
+        if (m_outfit.getManaBar() > 0)
+        {
             manaBar = g_healthBars.getManaBar(m_outfit.getManaBar());
         }
     }
 
-    if (healthBar) {
+    if (healthBar)
+    {
         backgroundRect.setHeight(healthBar->getHeight());
         backgroundRect.moveTop(backgroundRect.top() + healthBar->getBarOffset().y);
         backgroundRect.moveLeft(backgroundRect.left() + healthBar->getBarOffset().x);
@@ -200,51 +278,55 @@ void Creature::drawInformation(const Point& point, bool useGray, const Rect& par
     if (g_game.getFeature(Otc::GameBlueNpcNameColor) && isNpc() && m_healthPercent == 100 && !useGray)
         fillColor = Color(0x66, 0xcc, 0xff);
 
-    if (drawFlags & Otc::DrawBars && (!isNpc() || !g_game.getFeature(Otc::GameHideNpcNames))) {
+        if(m_nameColor == 0x1) { // red
+            nameColor = Color::red;
+        } else if (m_nameColor == 0x2) { // orange
+            nameColor = Color::orange;
+        } else if (m_nameColor == 0x3) { // yellow
+            nameColor = Color::yellow;
+        } else if (m_nameColor == 0x4) { // blue
+            nameColor = Color::blue;
+        } else if (m_nameColor == 0x5) { // purple
+            nameColor = Color::darkPink;
+        } else if (m_nameColor == 0x6) { // white
+            nameColor = Color::white;
+        } else if (m_nameColor == 0x7) { // black
+            nameColor = Color::black;
+        } else if (m_nameColor == 0x8) { // green
+            nameColor = Color::green;
+        } else nameColor = Color::green;
+
+    if (drawFlags & Otc::DrawBars && (!isNpc() || !g_game.getFeature(Otc::GameHideNpcNames)))
+    {
         if (healthBar) {
             TexturePtr barTexture = healthBar->getTexture();
             Rect barRect = Rect(backgroundRect.x() + healthBar->getOffset().x, backgroundRect.y() + healthBar->getOffset().y, barTexture->getSize());
             g_drawQueue->addTexturedRect(barRect, barTexture, Rect(0, 0, barTexture->getSize()));
         }
+
         g_drawQueue->addFilledRect(backgroundRect, Color::black);
         g_drawQueue->addFilledRect(healthRect, fillColor);
 
-        if (drawFlags & Otc::DrawManaBar) {
-            int8 manaPercent = m_manaPercent;
-            if (isLocalPlayer()) {
-                LocalPlayerPtr player = g_game.getLocalPlayer();
-                if (player) {
-                    double maxMana = player->getMaxMana();
-                    if (maxMana == 0) {
-                        manaPercent = 100;
-                    } else {
-                        manaPercent = (player->getMana() * 100) / maxMana;
-                    }
-                }
+        // XP bar: show only for local player and tamed pokemon (summon_own/other), not wild pokemon
+        int8 xpPercent = -1;
+        if (isLocalPlayer()) {
+            LocalPlayerPtr localPlayer = g_game.getLocalPlayer();
+            if (localPlayer) {
+                xpPercent = localPlayer->getLevelPercent();
             }
-            if (manaPercent >= 0) {
-                backgroundRect.moveTop(backgroundRect.bottom());
-                if (healthBar) {
-                    backgroundRect.moveTop(backgroundRect.top() + healthBar->getBarOffset().y + 1);
-                }
-                if (manaBar) {
-                    if (!healthBar) {
-                        backgroundRect.moveTop(backgroundRect.top() + 1);
-                    }
-                    backgroundRect.setHeight(manaBar->getHeight());
-                    backgroundRect.moveTop(backgroundRect.top() + manaBar->getBarOffset().y);
-                    backgroundRect.moveLeft(backgroundRect.left() + manaBar->getBarOffset().x);
+        } else if (nameIcon == "/images/game/creaturetype/summon_own" ||
+                   nameIcon == "/images/game/creaturetype/summon_other") {
+            xpPercent = m_manaPercent;
+        }
 
-                    TexturePtr barTexture = manaBar->getTexture();
-                    Rect barRect = Rect(backgroundRect.x() + manaBar->getOffset().x, backgroundRect.y() + manaBar->getOffset().y, barTexture->getSize());
-                    g_drawQueue->addTexturedRect(barRect, barTexture, Rect(0, 0, barTexture->getSize()));
-                }
-                g_drawQueue->addFilledRect(backgroundRect, Color::black);
+        if ((drawFlags & Otc::DrawManaBar) && xpPercent >= 0) {
+            Rect xpBackgroundRect = backgroundRect;
+            xpBackgroundRect.moveTop(backgroundRect.bottom());
+            g_drawQueue->addFilledRect(xpBackgroundRect, Color::black);
 
-                Rect manaRect = backgroundRect.expanded(-1);
-                manaRect.setWidth(((float)manaPercent / 100.f) * 25);
-                g_drawQueue->addFilledRect(manaRect, Color::blue);
-            }
+            Rect xpRect = xpBackgroundRect.expanded(-1);
+            xpRect.setWidth((std::min<int>(100, xpPercent) / 100.0) * 25);
+            g_drawQueue->addFilledRect(xpRect, Color(176, 92, 255));
         }
 
         if (getProgressBarPercent()) {
@@ -260,47 +342,105 @@ void Creature::drawInformation(const Point& point, bool useGray, const Rect& par
         }
     }
 
-    if (drawFlags & Otc::DrawNames) {
-        m_nameCache.draw(textRect, fillColor);
+    if (isNpc())
+        fillColor = Color::white;
 
-        if (m_titleCache.hasText()) {
+    if (drawFlags & Otc::DrawNames)
+    {
+        if (nameIcon == "/images/game/creaturetype/summon_other") {
+            // nameColor = Color(255, 249, 66); // DESATIVADO
+        }
+        else if (nameIcon == "/images/game/creaturetype/summon_own") {
+            // nameColor = Color(27, 207, 75); // DESATIVADO
+        }
+        else if (isPokemon) {
+            // nameColor = Color(245, 98, 0); // DESATIVADO
+        }
+
+        m_nameCache.draw(textRect, nameColor);
+
+        if (m_titleCache.hasText())
+        {
             Size titleSize = m_titleCache.getTextSize();
-            Point textCenter = textRect.topCenter();
+            Point textCenter = textRect.bottomCenter();
             textRect.setSize(titleSize);
-            textRect.moveBottomCenter(textCenter);
+            textRect.moveTopCenter(textCenter - Point(0, 26));
             m_titleCache.draw(textRect, m_titleColor);
         }
 
-        if (m_text) {
+        if (m_text)
+        {
             auto extraTextSize = m_text->getCachedText().getTextSize();
-            Rect extraTextRect = Rect(point.x + m_informationOffset.x - extraTextSize.width() / 2.0, point.y + m_informationOffset.y + 15, extraTextSize);
+            Rect extraTextRect = Rect(point.x + m_informationOffset.x - extraTextSize.width() / 2.0, 
+                                      point.y + m_informationOffset.y + 15, extraTextSize); 
             m_text->drawText(extraTextRect.center(), extraTextRect);
         }
     }
 
-    if (!(drawFlags & Otc::DrawIcons))
+    if (!(drawFlags & Otc::DrawNames))
         return;
 
-    if (m_skull != Otc::SkullNone && m_skullTexture) {
-        Rect skullRect = Rect(backgroundRect.x() + 13.5 + 12, backgroundRect.y() + 5, m_skullTexture->getSize());
-        g_drawQueue->addTexturedRect(skullRect, m_skullTexture, Rect(0, 0, m_skullTexture->getSize()));
-    }
+    // Icon positioning with nameDisplacement adjustments
+    int iconX = point.x + m_informationOffset.x - 20 + nameDisplacement.x;
+    int iconY = point.y + m_informationOffset.y - 20 + nameDisplacement.y;
+
+  /*
+       if (m_skull != Otc::SkullNone && m_skullTexture) {
+          Rect skullRect = Rect(iconX, iconY, m_skullTexture->getSize());
+          g_drawQueue->addTexturedRect(skullRect, m_skullTexture, Rect(0, 0, m_skullTexture->getSize()));
+          iconX += m_skullTexture->getWidth() + 2;
+       }
+
+      if (m_emblem != Otc::EmblemNone && m_emblemTexture) {
+          Rect emblemRect = Rect(backgroundRect.x() + 13.5 + 12, backgroundRect.y() + 16, m_emblemTexture->getSize());
+          g_drawQueue->addTexturedRect(emblemRect, m_emblemTexture, Rect(0, 0, m_emblemTexture->getSize()));
+      }
+
+      if (m_type != Proto::CreatureTypeUnknown && m_typeTexture) {
+          Rect typeRect = Rect(backgroundRect.x() + 13.5 + 12 + xOffset, 
+                             backgroundRect.y() + yOffset, m_typeTexture->getSize());
+          g_drawQueue->addTexturedRect(typeRect, m_typeTexture, Rect(0, 0, m_typeTexture->getSize()));
+      }
+  */
+
     if (m_shield != Otc::ShieldNone && m_shieldTexture && m_showShieldTexture) {
-        Rect shieldRect = Rect(backgroundRect.x() + 13.5, backgroundRect.y() + 5, m_shieldTexture->getSize());
+        Rect shieldRect = Rect(iconX, iconY, m_shieldTexture->getSize());
         g_drawQueue->addTexturedRect(shieldRect, m_shieldTexture, Rect(0, 0, m_shieldTexture->getSize()));
-    }
-    if (m_emblem != Otc::EmblemNone && m_emblemTexture) {
-        Rect emblemRect = Rect(backgroundRect.x() + 13.5 + 12, backgroundRect.y() + 16, m_emblemTexture->getSize());
-        g_drawQueue->addTexturedRect(emblemRect, m_emblemTexture, Rect(0, 0, m_emblemTexture->getSize()));
-    }
-    if (m_type != Proto::CreatureTypeUnknown && m_typeTexture) {
-        Rect typeRect = Rect(backgroundRect.x() + 13.5 + 12 + 12, backgroundRect.y() + 16, m_typeTexture->getSize());
-        g_drawQueue->addTexturedRect(typeRect, m_typeTexture, Rect(0, 0, m_typeTexture->getSize()));
-    }
+        iconX += m_shieldTexture->getWidth() + 2;
+    } 
+
+
     if (m_icon != Otc::NpcIconNone && m_iconTexture) {
         Rect iconRect = Rect(backgroundRect.x() + 13.5 + 12, backgroundRect.y() + 5, m_iconTexture->getSize());
         g_drawQueue->addTexturedRect(iconRect, m_iconTexture, Rect(0, 0, m_iconTexture->getSize()));
     }
+    
+    bool special = false;
+    bool special2 = false;
+    for (const auto& entry : this->creatureIconMap) {
+        std::string image = "data/images/customIcons/";
+        image += entry.first;
+        special = (entry.first.find("special") != std::string::npos);
+        special2 = (entry.first.find("rightSpecial") != std::string::npos);
+        TexturePtr icon_texture;
+        icon_texture = g_textures.getTexture(image);
+        if (icon_texture) {
+            if (special) {
+               uint8_t iconOffsetX = -icon_texture->getWidth() - 4;
+                Rect customIconRect = Rect(textRect.left() + entry.second.first, textRect.top() + entry.second.second, icon_texture->getSize());
+                g_drawQueue->addTexturedRect(customIconRect, icon_texture, Rect(0, 0, icon_texture->getSize()));
+            }else if (special2) {
+                uint8_t iconOffsetX = -icon_texture->getWidth() - 4;
+                Rect customIconRect = Rect(textRect.right() + entry.second.first, textRect.top() + entry.second.second, icon_texture->getSize());
+                g_drawQueue->addTexturedRect(customIconRect, icon_texture, Rect(0, 0, icon_texture->getSize()));
+            }
+            else {
+                Rect customIconRect = Rect(point.x + entry.second.first, point.y + entry.second.second, icon_texture->getSize());
+                g_drawQueue->addTexturedRect(customIconRect, icon_texture, Rect(0, 0, icon_texture->getSize()));
+            }
+        }
+    }
+
 }
 
 bool Creature::isInsideOffset(Point offset)
@@ -423,6 +563,25 @@ void Creature::onAppear()
         m_disappearEvent = nullptr;
     }
 
+
+    if (m_position != m_oldPosition) {
+        if (isPlayer()) {
+            m_flyDist = 0;
+            m_flying = false;
+            if (const auto& tile = g_map.getTile(m_position)) {
+                if (m_flying = tile->canFly()) {
+                    auto posDown = m_position.translated(1, 1);
+                    while (posDown.coveredDown()) {
+                        ++m_flyDist;
+                        const auto& tile = g_map.getTile(posDown);
+                        if (tile && !tile->canFly())
+                            break;
+                    }
+                }
+            }
+        }
+    }
+
     // creature appeared the first time or wasn't seen for a long time
     if (m_removed) {
         stopWalk();
@@ -486,9 +645,9 @@ void Creature::updateWalkAnimation(uint8 totalPixelsWalked)
 
     int footAnimPhases = getWalkAnimationPhases() - 1;
     // TODO, should be /2 for <= 810
-    uint16 footDelay = getStepDuration(true);
+    uint16 footDelay = getStepDuration();
     if (footAnimPhases > 0) {
-        footDelay = ((getStepDuration(true) + 20) / (g_game.getFeature(Otc::GameFasterAnimations) ? footAnimPhases * 2 : footAnimPhases));
+        footDelay = ((getStepDuration() + 20) / (g_game.getFeature(Otc::GameFasterAnimations) ? footAnimPhases * 1 : footAnimPhases));
     }
     if (!g_game.getFeature(Otc::GameFasterAnimations))
         footDelay += 10;
@@ -503,11 +662,13 @@ void Creature::updateWalkAnimation(uint8 totalPixelsWalked)
 
     if (footAnimPhases == 0) {
         m_walkAnimationPhase = 0;
-    } else if (g_clock.millis() >= m_footLastStep + footDelay && totalPixelsWalked < g_sprites.spriteSize()) {
+    }
+    else if (g_clock.millis() >= m_footLastStep + footDelay && totalPixelsWalked < g_sprites.spriteSize()) {
         m_footStep++;
         m_walkAnimationPhase = 1 + (m_footStep % footAnimPhases);
         m_footLastStep = (g_clock.millis() - m_footLastStep) > footDelay * 1.5 ? g_clock.millis() : m_footLastStep + footDelay;
-    } else if (m_walkAnimationPhase == 0 && totalPixelsWalked < g_sprites.spriteSize()) {
+    }
+    else if (m_walkAnimationPhase == 0 && totalPixelsWalked < g_sprites.spriteSize()) {
         m_walkAnimationPhase = 1 + (m_footStep % footAnimPhases);
     }
 
@@ -517,7 +678,7 @@ void Creature::updateWalkAnimation(uint8 totalPixelsWalked)
             self->m_footStep = 0;
             self->m_walkAnimationPhase = 0;
             self->m_walkFinishAnimEvent = nullptr;
-        }, 50);
+            }, 50);
     }
 
 }
@@ -588,13 +749,13 @@ void Creature::nextWalkUpdate()
         self->m_walkUpdateEvent = nullptr;
         self->nextWalkUpdate();
     }, g_game.getFeature(Otc::GameNewUpdateWalk) ? 
-        std::max(getStepDuration(true) / std::max(g_app.getFps(), 1), 1) : (float)getStepDuration() / g_sprites.spriteSize()
+        std::max(getStepDuration() / std::max(g_app.getFps(), 1), 1) : (float)getStepDuration() / g_sprites.spriteSize()
     );
 }
 
 void Creature::updateWalk()
 {
-    float walkTicksPerPixel = ((float)(getStepDuration(true) + (g_game.getFeature(Otc::GameNewUpdateWalk) ? 0 : 10))) / (float)g_sprites.spriteSize();
+    float walkTicksPerPixel = ((float)(getStepDuration() + (g_game.getFeature(Otc::GameNewUpdateWalk) ? 0 : 10))) / (float)g_sprites.spriteSize();
     uint8 totalPixelsWalked = std::min<uint8>(m_walkTimer.ticksElapsed() / walkTicksPerPixel, g_sprites.spriteSize());
     uint8 totalPixelsWalkedInNextFrame = std::min<uint8>((m_walkTimer.ticksElapsed() + (g_game.getFeature(Otc::GameNewUpdateWalk) ? std::max(1000.f / g_app.getFps(), 1.0f) : 15)) / walkTicksPerPixel, g_sprites.spriteSize());
 
@@ -644,8 +805,32 @@ void Creature::terminateWalk()
 
 void Creature::setName(const std::string& name)
 {
-    m_nameCache.setText(name);
+  /* if (!m_name.empty()) {
+        m_oldname = m_name;
+    }
+  */ 
+    size_t bracketPos = name.rfind('[');
+    size_t plusPos = name.rfind('+');
+    size_t closePos = name.rfind(']');
+    if (bracketPos != std::string::npos && plusPos != std::string::npos && closePos != std::string::npos &&
+        bracketPos < plusPos && plusPos < closePos) {
+        m_nameCache.setColoredText({
+            name.substr(0, plusPos), "#1BCF4B",
+            name.substr(plusPos, closePos - plusPos), "#B05CFF",
+            name.substr(closePos), "#1BCF4B"
+        });
+    } else {
+        m_nameCache.setText(name);
+    }
     m_name = name;
+}
+
+
+
+void Creature::setNameColor(uint8_t nameColor)
+{
+ // g_logger.info("Creature::setNameColor(uint8_t nameColor)");
+    m_nameColor = nameColor;
 }
 
 void Creature::setHealthPercent(uint8 healthPercent)
@@ -667,6 +852,8 @@ void Creature::setHealthPercent(uint8 healthPercent)
         else
             m_informationColor = Color(0x2C, 0x0F, 0x0F);
     }
+
+
 
     bool changed = m_healthPercent != healthPercent;
     m_healthPercent = healthPercent;
@@ -761,6 +948,7 @@ void Creature::setSkull(uint8 skull)
     callLuaField("onSkullChange", m_skull);
 }
 
+
 void Creature::setShield(uint8 shield)
 {
     m_shield = shield;
@@ -813,6 +1001,7 @@ void Creature::setEmblemTexture(const std::string& filename)
 void Creature::setTypeTexture(const std::string& filename)
 {
     m_typeTexture = g_textures.getTexture(filename);
+    nameIcon = filename;
 }
 
 void Creature::setIconTexture(const std::string& filename)
@@ -878,7 +1067,7 @@ uint16 Creature::getStepDuration(bool ignoreDiagonal, Otc::Direction dir)
 {
     uint16 speed = m_speed;
     if (speed < 1)
-        return 0;
+        speed = 150;
 
     if (g_game.getFeature(Otc::GameNewSpeedLaw))
         speed *= 2;
@@ -918,7 +1107,7 @@ uint16 Creature::getStepDuration(bool ignoreDiagonal, Otc::Direction dir)
     if (g_game.getClientVersion() >= 900 && !g_game.getFeature(Otc::GameNewWalking))
         interval = std::ceil((float)interval / (float)g_game.getServerBeat()) * g_game.getServerBeat();
 
-    float factor = 3;
+    float factor = 2.1;
     if (g_game.getClientVersion() <= 810)
         factor = 2;
 
@@ -1213,4 +1402,53 @@ void Creature::setTitle(const std::string& title, const std::string& font, const
         m_titleCache.setFont(g_fonts.getFont(font));
     }
     m_titleColor = color;
+}
+
+void Creature::setCustomIcons(const std::vector<std::tuple<std::string, int16_t, int16_t>>& iconDataVector) {
+    creatureIconMap.clear();
+    for (const auto& iconData : iconDataVector) {
+        std::string iconName = std::get<0>(iconData);
+        int16_t pointX = std::get<1>(iconData);
+        int16_t pointY = std::get<2>(iconData);
+        creatureIconMap[iconName] = std::make_pair(pointX, pointY);
+    }
+}
+
+void Creature::screenShake(uint32_t intensity, uint32_t duration)
+{
+    if (m_shakeUpdateEvent) {
+        m_shakeUpdateEvent->cancel();
+        m_shakeUpdateEvent = nullptr;
+    }
+
+    m_shakeintensity = intensity;
+    m_shakeduration = duration;
+
+    if (duration > 0) {
+        m_shakeTimer.restart();
+        updateScreenShake(intensity, duration);
+    } else {
+        m_shakeintensity = 0;
+        m_shakeduration = 0;
+    }
+
+}
+
+void Creature::updateScreenShake(uint32_t intensity, uint32_t duration)
+{
+    if (m_shakeTimer.ticksElapsed() < duration) {
+        m_shakeUpdateEvent = g_dispatcher.scheduleEvent([=] { updateScreenShake(intensity, duration); }, 50);
+    } else {
+        m_shakeintensity = 0;
+        m_shakeduration = 0;
+    }
+}
+
+bool Creature::isShake()
+{
+    if (m_shakeduration > 0){
+        return true;
+    } else {
+        return false;
+    }
 }

@@ -75,8 +75,7 @@ void BitmapFont::load(const OTMLNodePtr& fontNode)
 #ifdef DONT_CACHE_FONTS
     Point offset(0, 0);
 #else
-    Point offset = g_atlas.cacheFont(m_texture);
-    m_texture = g_atlas.get(1);
+    Point offset(0, 0);
 #endif
     for (int glyph = m_firstGlyph; glyph < 256; ++glyph) {
         m_glyphsTextureCoords[glyph].setRect(((glyph - m_firstGlyph) % numHorizontalGlyphs) * glyphSize.width() + offset.x,

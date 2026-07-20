@@ -59,4 +59,7 @@ bool luavalue_cast(int index, Light& light);
 int push_luavalue(const UnjustifiedPoints& unjustifiedPoints);
 bool luavalue_cast(int index, UnjustifiedPoints& unjustifiedPoints);
 
+// ItemInfo
+int push_luavalue(const ItemInfo& info);
+bool luavalue_cast(int index, ItemInfo& info);
 #endif

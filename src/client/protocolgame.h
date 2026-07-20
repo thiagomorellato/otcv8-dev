@@ -210,6 +210,8 @@ private:
     void parseCreatureOutfit(const InputMessagePtr& msg);
     void parseCreatureSpeed(const InputMessagePtr& msg);
     void parseCreatureSkulls(const InputMessagePtr& msg);
+    void parseUpdateNameColor(const InputMessagePtr& msg);
+    void parseUpdateCreatureNickname(const InputMessagePtr& msg);
     void parseCreatureShields(const InputMessagePtr& msg);
     void parseCreatureUnpass(const InputMessagePtr& msg);
     void parseEditText(const InputMessagePtr& msg);
@@ -223,6 +225,8 @@ private:
     void parsePlayerInfo(const InputMessagePtr& msg);
     void parsePlayerStats(const InputMessagePtr& msg);
     void parsePlayerSkills(const InputMessagePtr& msg);
+    void parsePlayerFly(const InputMessagePtr& msg);
+    void parseCreatureScreenShake(const InputMessagePtr& msg);
     void parsePlayerState(const InputMessagePtr& msg);
     void parsePlayerCancelAttack(const InputMessagePtr& msg);
     void parsePlayerModes(const InputMessagePtr& msg);
@@ -288,8 +292,11 @@ private:
     void parseItemDetail(const InputMessagePtr& msg);
     void parseHunting(const InputMessagePtr& msg);
     void parseExtendedOpcode(const InputMessagePtr& msg);
+    void parseMonsterCallbacks(const InputMessagePtr& msg);
     void parseChangeMapAwareRange(const InputMessagePtr& msg);
     void parseProgressBar(const InputMessagePtr& msg);
+	void parseJump(const InputMessagePtr& msg);
+	void parseFirstTitle(const InputMessagePtr& msg);
     void parseFeatures(const InputMessagePtr& msg);
     void parseCreaturesMark(const InputMessagePtr& msg);
     void parseNewCancelWalk(const InputMessagePtr& msg);
@@ -310,6 +317,7 @@ public:
     CreaturePtr getCreature(const InputMessagePtr& msg, int type = 0);
     StaticTextPtr getStaticText(const InputMessagePtr& msg, int type = 0);
     ItemPtr getItem(const InputMessagePtr& msg, int id = 0, bool hasDescription = true);
+    void addItemInfo(const InputMessagePtr& msg, const ItemPtr& item);
     Position getPosition(const InputMessagePtr& msg);
     Imbuement getImbuementInfo(const InputMessagePtr& msg);
 

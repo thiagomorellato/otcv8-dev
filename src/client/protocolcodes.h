@@ -70,6 +70,12 @@ namespace Proto {
         // OTClientV8 64-79
         GameServerNewPing                   = 64,
         GameServerChangeMapAwareRange       = 66,
+        GameServerJump					    = 68,
+        GameFirstTitle					    = 76,
+        GameUpdateNameColor				    = 77,
+        GameUpdateNickname                  = 78,
+        GameSetFly                          = 79,
+        GameServerCreatureScreenShake       = 65,
 
         GameServerFeatures                  = 67,
 
@@ -210,7 +216,8 @@ namespace Proto {
         GameServerStore                     = 251, // 1080
         GameServerStoreOffers               = 252, // 1080
         GameServerStoreTransactionHistory   = 253, // 1080
-        GameServerStoreCompletePurchase     = 254  // 1080
+        GameServerStoreCompletePurchase     = 254,  // 1080
+        GameServerMonsterCallbacks          = 255  // 1098 e.e
     };
 
     enum ClientOpcodes : uint8
@@ -341,6 +348,7 @@ namespace Proto {
         CreatureTypeNpc,
         CreatureTypeSummonOwn,
         CreatureTypeSummonOther,
+        CreatureTypeDuelist,
         CreatureTypeUnknown = 0xFF
     };
 

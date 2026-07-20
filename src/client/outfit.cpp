@@ -41,7 +41,7 @@ Outfit::Outfit()
     resetClothes();
 }
 
-void Outfit::draw(Point dest, Otc::Direction direction, uint walkAnimationPhase, bool animate, LightView* lightView, bool ui)
+void Outfit::draw(Point dest, Otc::Direction direction, uint walkAnimationPhase, const Color& color, bool animate, LightView* lightView, bool ui)
 {
     // direction correction
     if (m_category != ThingCategoryCreature)
@@ -63,6 +63,47 @@ void Outfit::draw(Point dest, Otc::Direction direction, uint walkAnimationPhase,
     }
 
     int animationPhase = walkAnimationPhase;
+
+    Point attachedEffectDest = dest;
+    auto drawAttachedEffect = [&](const uint16_t effectId) {
+        int effectAnimation = 0;
+        auto effectType = g_things.rawGetThingType(effectId, ThingCategoryEffect);
+        if (!g_things.isValidDatId(effectId, ThingCategoryEffect)) {
+            return;
+        }
+        auto auraAnimator = effectType->getAnimator();
+        if (animate) {
+            if (effectType->isAnimateAlways()) {
+                int phases = effectType->getAnimator() ? effectType->getAnimator()->getAnimationPhases() : effectType->getAnimationPhases();
+                int ticksPerFrame = 1000 / phases;
+                effectAnimation = (g_clock.millis() % (ticksPerFrame * phases)) / ticksPerFrame;
+            }
+            else if (auraAnimator) {
+                effectAnimation = auraAnimator->getPhase();
+            }
+            else {
+                effectAnimation = (stdext::millis() / 75) % effectType->getAnimationPhases();
+            }
+        }
+        EffectPtr effect = EffectPtr(new Effect());
+        effect->setId(effectId);
+
+        int xPattern = effect->getPosition().x % effectType->getNumPatternX();
+        if (xPattern < 0)
+            xPattern += effectType->getNumPatternX();
+
+        int yPattern = effect->getPosition().y % effectType->getNumPatternY();
+        if (yPattern < 0)
+            yPattern += effectType->getNumPatternY();
+
+        Point effectDisplacement = effectType->getEffectDisplacement();
+        effectType->draw(attachedEffectDest + effectDisplacement, 0, xPattern, yPattern, 0, effectAnimation, Color::white, lightView);
+    };
+
+    for (const auto& it : m_attachedEffects) {
+        if (it.second == 0 && !ui) // draw back
+		    drawAttachedEffect(it.first);
+	}
 
     auto wingBounce = [&] {
         int maxoffset = 4;
@@ -153,7 +194,7 @@ void Outfit::draw(Point dest, Otc::Direction direction, uint walkAnimationPhase,
             }
 
             dest -= mountType->getDisplacement() * g_sprites.getOffsetFactor();
-            mountType->draw(dest, 0, direction, 0, 0, mountAnimationPhase, Color::white, lightView);
+            mountType->draw(dest, 0, direction, 0, 0, mountAnimationPhase, color, lightView);
             dest += type->getDisplacement() * g_sprites.getOffsetFactor();
         }
     };
@@ -167,7 +208,7 @@ void Outfit::draw(Point dest, Otc::Direction direction, uint walkAnimationPhase,
             if (idleAnimator) {
                 if (walkAnimationPhase > 0) {
                     wingAnimationPhase += idleAnimator->getAnimationPhases() - 1;
-                }                 else {
+                } else {
                     wingAnimationPhase = idleAnimator->getPhase();
                 }
             } else if (wingsType->isAnimateAlways()) {
@@ -176,9 +217,10 @@ void Outfit::draw(Point dest, Otc::Direction direction, uint walkAnimationPhase,
                 wingAnimationPhase = (g_clock.millis() % (ticksPerFrame * phases)) / ticksPerFrame;
             }
         }
-        wingsType->draw(wingDest, 0, direction, 0, wingsZPattern, wingAnimationPhase, Color::white, lightView);
-    };
-
+        wingDest.x += wingsOffset.x;
+		wingDest.y += wingsOffset.y;
+        wingsType->draw(wingDest, 0, direction, 0, wingsZPattern, wingAnimationPhase, color, lightView);
+    };        
     Point auraDest = dest;
     auto drawAura = [&] {
         int auraAnimationPhase = 0;
@@ -200,7 +242,6 @@ void Outfit::draw(Point dest, Otc::Direction direction, uint walkAnimationPhase,
         }
         auraType->draw(auraDest, 0, direction, 0, auraZPattern, auraAnimationPhase, Color::white, lightView);
     };
-
     Point topAuraDest = dest;
     auto drawTopAura = [&] {
         int auraAnimationPhase = 0;
@@ -233,10 +274,9 @@ void Outfit::draw(Point dest, Otc::Direction direction, uint walkAnimationPhase,
         }
     }
 
-    if (m_aura && (!g_game.getFeature(Otc::GameDrawAuraOnTop) or g_game.getFeature(Otc::GameAuraFrontAndBack)) ) {
+    if (m_aura && (!g_game.getFeature(Otc::GameDrawAuraOnTop) || g_game.getFeature(Otc::GameAuraFrontAndBack)) ) {
         drawAura();
     }
-  
     drawMount();
 
     if (m_wings && (direction == Otc::South || direction == Otc::East)) {
@@ -284,7 +324,7 @@ void Outfit::draw(Point dest, Otc::Direction direction, uint walkAnimationPhase,
 
         if (type->getLayers() <= 1) {
             if (!m_shader.empty()) {
-                std::shared_ptr<DrawOutfitParams> outfitParams = type->drawOutfit(dest, 0, direction, yPattern, zPattern, animationPhase, Color::white, lightView);
+                std::shared_ptr<DrawOutfitParams> outfitParams = type->drawOutfit(dest, 0, direction, yPattern, zPattern, animationPhase, color, lightView);
                 if (!outfitParams)
                     continue;
                 if (yPattern == 0)
@@ -293,12 +333,12 @@ void Outfit::draw(Point dest, Otc::Direction direction, uint walkAnimationPhase,
                 g_drawQueue->add(outfit);
                 continue;
             }
-            type->draw(dest, 0, direction, yPattern, zPattern, animationPhase, Color::white, lightView);
+            type->draw(dest, 0, direction, yPattern, zPattern, animationPhase, color, lightView);
             continue;
         }
 
         uint32_t colors = m_head + (m_body << 8) + (m_legs << 16) + (m_feet << 24);
-        std::shared_ptr<DrawOutfitParams> outfitParams = type->drawOutfit(dest, 1, direction, yPattern, zPattern, animationPhase, Color::white, lightView);
+        std::shared_ptr<DrawOutfitParams> outfitParams = type->drawOutfit(dest, 1, direction, yPattern, zPattern, animationPhase, color, lightView);
         if (!outfitParams)
             continue;
 
@@ -346,7 +386,7 @@ void Outfit::draw(Point dest, Otc::Direction direction, uint walkAnimationPhase,
 
         drawWings();
     }
-    
+
     if (m_aura && (g_game.getFeature(Otc::GameDrawAuraOnTop) || g_game.getFeature(Otc::GameAuraFrontAndBack))) {
         if (g_game.getFeature(Otc::GameAuraFrontAndBack)){
             if (zPattern > 0) {
@@ -360,15 +400,20 @@ void Outfit::draw(Point dest, Otc::Direction direction, uint walkAnimationPhase,
             drawTopAura();
         }
         else {
-            drawAura();
+         drawAura();
         }
     }
-}
 
-void Outfit::draw(const Rect& dest, Otc::Direction direction, uint animationPhase, bool animate, bool ui, bool oldScaling)
+
+    for (const auto& it : m_attachedEffects) {
+        if (it.second == 1 && !ui) // draw front
+            drawAttachedEffect(it.first);
+    }
+}
+void Outfit::draw(const Rect& dest, Otc::Direction direction, const Color& color, uint animationPhase, bool animate, bool ui, bool oldScaling)
 {
     int size = g_drawQueue->size();
-    draw(Point(0, 0), direction, animationPhase, animate, nullptr, ui);
+    draw(Point(0, 0), direction, animationPhase, color, animate, nullptr, ui);
     g_drawQueue->correctOutfit(dest, size, oldScaling);
 }
 

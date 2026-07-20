@@ -48,6 +48,8 @@ public:
 
     virtual void draw(const Point& dest, bool animate = true, LightView* lightView = nullptr);
     virtual void drawOutfit(const Rect& destRect, Otc::Direction direction = Otc::InvalidDirection, const Color& color = Color::white, bool animate = false, bool ui = false, bool oldScaling = false);
+    
+    void drawShadow(const Point& dest);
 
     void drawInformation(const Point& point, bool useGray, const Rect& parentRect, int drawFlags);
 
@@ -55,6 +57,7 @@ public:
 
     void setId(uint32 id) { m_id = id; }
     void setName(const std::string& name);
+    void setNameColor(uint8_t nameColor);
     void setManaPercent(int8 value) { m_manaPercent = value; }
     void setHealthPercent(uint8 healthPercent);
     void setDirection(Otc::Direction direction);
@@ -75,6 +78,7 @@ public:
     void setIconTexture(const std::string& filename);
     void setPassable(bool passable) { m_passable = passable; }
     void setSpeedFormula(double speedA, double speedB, double speedC);
+    void setCustomIcons(const std::vector<std::tuple<std::string, int16_t, int16_t>>& iconDataVector);
 
     void addTimedSquare(uint8 color);
     void removeTimedSquare() { m_showTimedSquare = false; }
@@ -98,11 +102,19 @@ public:
 
     uint32 getId() { return m_id; }
     std::string getName() { return m_name; }
+
+	//uint8_t getNameColor() { return m_nameColor; }
+	Point getWingsOffset() { return m_wingsOffset; }
+    void setWingsOffset(int x, int y) {
+        m_wingsOffset.x = x;
+        m_wingsOffset.y = y;
+    }
     uint8 getHealthPercent() { return m_healthPercent; }
     int8 getManaPercent() { return m_manaPercent; }
     Otc::Direction getDirection() { return m_direction; }
     Otc::Direction getWalkDirection() { return m_walkDirection; }
     Outfit getOutfit() { return m_outfit; }
+	int getWings() { return m_outfit.getWings(); }
     Light getLight() { return m_light; }
     uint16 getSpeed() { return m_speed; }
     double getBaseSpeed() { return m_baseSpeed; }
@@ -197,6 +209,29 @@ public:
     uint8 getProgressBarPercent() { return m_progressBarPercent; }
     void setProgressBar(uint32 duration, bool ltr);
     void updateProgressBar(uint32 duration, bool ltr);
+    int creature_level;
+    int levelc = 0;
+    std::string nameIcon;
+    bool isPokemon = false;
+    void setFly(bool fly) { m_flying = fly; }
+    bool m_flying { false };
+    bool isGhost = false;
+
+
+    bool isShake();
+    int getShakePower() { return m_shakeintensity; }
+    void screenShake(uint32_t intensity, uint32_t duration);
+    void updateScreenShake(uint32_t intensity, uint32_t duration);
+
+    void addAttachEffect(uint16_t effectId, uint8_t front) {
+        m_attachedEffects[effectId] = front;
+    }
+
+    void removeAttachEffect(uint16_t effectId) {
+        m_attachedEffects.erase(effectId);
+    }
+
+    std::map<uint16_t, uint8_t> getAttachedEffects() { return m_attachedEffects; }
 
 protected:
     virtual void updateWalkAnimation(uint8 totalPixelsWalked);
@@ -209,8 +244,12 @@ protected:
     void updateOutfitColor(Color color, Color finalColor, Color delta, int duration);
     void updateJump();
 
+    uint8_t m_flyDist{ 0 };
+   
+    bool isFlying() { return m_flying; }
     uint32 m_id;
     std::string m_name;
+    //std::string m_oldname;
     uint8 m_healthPercent;
     int8 m_manaPercent;
     Otc::Direction m_direction;
@@ -242,13 +281,16 @@ protected:
     Color m_informationColor;
     bool m_useCustomInformationColor = false;
     Point m_informationOffset;
+	Point m_wingsOffset;
     Color m_outfitColor;
     ScheduledEventPtr m_outfitColorUpdateEvent;
     Timer m_outfitColorTimer;
     CachedText m_titleCache;
     Color m_titleColor;
+    std::map<uint16_t, uint8_t> m_attachedEffects;
 
     static std::array<double, Otc::LastSpeedFormula> m_speedFormula;
+    std::map<std::string, std::pair<int16_t, int16_t>> creatureIconMap;
 
     // walk related
     int m_walkAnimationPhase;
@@ -289,6 +331,12 @@ protected:
     uint8 m_progressBarPercent;
     ScheduledEventPtr m_progressBarUpdateEvent;
     Timer m_progressBarTimer;
+
+    /// screen shake
+    uint32_t m_shakeintensity;
+    uint32_t m_shakeduration;
+    Timer m_shakeTimer;
+    ScheduledEventPtr m_shakeUpdateEvent;
 };
 
 // @bindclass

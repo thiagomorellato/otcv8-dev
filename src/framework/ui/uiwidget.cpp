@@ -34,6 +34,7 @@
 #include <framework/luaengine/luainterface.h>
 #include <framework/util/stats.h>
 #include <framework/util/extras.h>
+#include <framework/graphics/fontmanager.h>
 #include <framework/input/mouse.h>
 
 UIWidget::UIWidget()
@@ -136,9 +137,9 @@ void UIWidget::drawChildren(const Rect& visibleRect, Fw::DrawPane drawPane)
         // debug draw box
         if(g_ui.isDrawingDebugBoxes() && drawPane == Fw::ForegroundPane) {
             g_drawQueue->addBoundingRect(child->getRect(), 1, Color::green);
-            if (m_font) {
-                m_font->drawText(child->getId(), child->getPosition() + Point(2, 0), Color::red);
-            }
+			BitmapFontPtr specialFont = g_fonts.getFont("verdana-9px");
+            // g_drawQueue->addText(specialFont, stdext::format("%s\n%s", child->getId(), child->getStyleName()), child->getRect(), Fw::AlignTopLeft, Color::red);
+            g_drawQueue->addText(specialFont, stdext::format("%s", child->getId()), child->getRect(), Fw::AlignTopLeft, Color::red);
         }
     }
 }

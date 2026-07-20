@@ -574,6 +574,19 @@ std::string ResourceManager::resolvePath(std::string path)
     return path;
 }
 
+std::string ResourceManager::getRealDir(const std::string& path)
+{
+    std::string dir;
+    const char* cdir = PHYSFS_getRealDir(resolvePath(path).c_str());
+    if (cdir)
+        dir = cdir;
+    return dir;
+}
+
+std::string ResourceManager::getRealPath(const std::string& path)
+{
+    return getRealDir(path) + "/" + path;
+}
 std::string ResourceManager::guessFilePath(const std::string& filename, const std::string& type)
 {
     if(isFileType(filename, type))
@@ -1145,4 +1158,9 @@ void ResourceManager::unmountMemoryData()
     m_memoryData = nullptr;
     m_loadedFromMemory = false;
     m_loadedFromArchive = false;
+}
+
+ticks_t ResourceManager::getFileTime(const std::string& filename)
+{
+    return g_platform.getFileModificationTime(getRealPath(filename));
 }

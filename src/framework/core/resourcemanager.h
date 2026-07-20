@@ -64,6 +64,8 @@ public:
     std::list<std::string> listDirectoryFiles(const std::string & directoryPath = "", bool fullPath = false, bool raw = false);
 
     std::string resolvePath(std::string path);
+    std::string getRealDir(const std::string& path);
+    std::string getRealPath(const std::string& path);
     std::string getWorkDir() { return "/"; }
 #ifdef ANDROID
     std::string getWriteDir() { return "/"; }
@@ -75,6 +77,7 @@ public:
 
     std::string guessFilePath(const std::string& filename, const std::string& type);
     bool isFileType(const std::string& filename, const std::string& type);
+    ticks_t getFileTime(const std::string& filename);
 
     bool isLoadedFromArchive() { return m_loadedFromArchive; }
     bool isLoadedFromMemory() { return m_loadedFromMemory; }

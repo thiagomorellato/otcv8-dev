@@ -39,6 +39,7 @@ public:
     void draw(const Point& dest, bool animate = true, LightView* lightView = nullptr) override;
 
     void unlockWalk() { m_walkLockExpiration = 0; }
+    void setCanWalk(bool canWalk) { m_canWalk = canWalk; }
     void lockWalk(int millis = 200);
     void stopAutoWalk();
     bool autoWalk(Position destination, bool retry = false);
@@ -136,6 +137,7 @@ public:
     void startServerWalking() { m_serverWalking = true; }
     void finishServerWalking() { m_serverWalking = false; }
 
+
 protected:
     void walk(const Position& oldPos, const Position& newPos) override;
     void cancelWalk(Otc::Direction direction = Otc::InvalidDirection);
@@ -171,6 +173,7 @@ private:
     bool m_premium = false;
     bool m_known = false;
     bool m_pending = false;
+    bool m_canWalk = true;
 
     ItemPtr m_inventoryItems[Otc::LastInventorySlot];
     Timer m_idleTimer;
